@@ -109,8 +109,11 @@ The project uses ESLint for code quality and follows React best practices.
 ## 👤 Authors
 
 **Aliyah Alabdali**
+
 **Renad Alharthi**
+
 **Rahaf Almalki**
+
 **Rawan Alahmadi**
 
 ## 📄 License
