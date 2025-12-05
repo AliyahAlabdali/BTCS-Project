@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import * as ort from 'onnxruntime-web';
-import { Upload, Activity, Info, CheckCircle, AlertCircle, BarChart2, Loader2, X } from 'lucide-react';
 
-// Configure ONNX Runtime with proper WASM paths
-ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.23.2/dist/';
+import * as ort from 'onnxruntime-web';
+
+import { Upload, Activity, Info, CheckCircle, AlertCircle, Loader2, X, Brain, Shield, ChevronRight } from 'lucide-react';
+
+
 
 // --- CONFIGURATION ---
-const MODEL_PATH = "/model.onnx"; 
+
+const MODEL_PATH = "./model.onnx"; 
+
 const IMAGE_SIZE = 224; 
-const CLASSES = ["Glioma", "Meningioma", "No Tumor", "Pituitary"];
+
+const CLASSES = ["Glioma", "Meningioma", "Pituitary", "No Tumor"];
 
 // --- 1. IMAGE PREPROCESSING ---
 async function preprocessImage(imageFile) {
@@ -48,16 +52,14 @@ async function preprocessImage(imageFile) {
 // --- 2. INFERENCE ENGINE ---
 const runInference = async (imageFile) => {
   try {
+    ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/";
     const session = await ort.InferenceSession.create(MODEL_PATH, { 
       executionProviders: ['wasm'], 
-      graphOptimizationLevel: 'all',
-      enableMemPattern: false,
-      enableCpuMemArena: false
+      graphOptimizationLevel: 'all' 
     });
 
     const inputTensor = await preprocessImage(imageFile);
-    const inputName = session.inputNames[0];
-    const feeds = { [inputName]: inputTensor }; 
+    const feeds = { input: inputTensor }; 
     const results = await session.run(feeds);
     const outputKey = session.outputNames[0];
     const outputData = results[outputKey].data;
@@ -83,34 +85,52 @@ const runInference = async (imageFile) => {
       probabilities: {
         "Glioma": probabilities[0],
         "Meningioma": probabilities[1],
-        "No Tumor": probabilities[2],
-        "Pituitary": probabilities[3]
+        "Pituitary": probabilities[2],
+        "No Tumor": probabilities[3]
       }
     };
   } catch (e) {
     console.error("Inference Failed:", e);
-    alert("Inference Failed! Check console (F12) for details. Is 'model.onnx' in the public folder?");
+    alert("Analysis Error. Please ensure 'model.onnx' is loaded correctly.");
     return null;
   }
 };
 
 // --- 3. UI COMPONENTS ---
+
 const Navbar = ({ activeTab, setActiveTab }) => (
-  <nav className="bg-white border-b border-slate-200 sticky top-0 z-50">
+  <nav className="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50">
     <div className="max-w-6xl mx-auto px-4 h-16 flex justify-between items-center">
-      <div className="flex items-center gap-2 font-bold text-xl text-slate-800">
-        <Activity className="h-6 w-6 text-blue-600" /> BTCS <span className="text-blue-600">AI</span>
+      <div className="flex items-center gap-2 font-bold text-xl text-slate-800 tracking-tight cursor-pointer" onClick={() => setActiveTab('Upload')}>
+        <div className="bg-blue-600 p-1.5 rounded-lg text-white">
+            <Brain className="h-5 w-5" />
+        </div>
+        <span>BTCS <span className="text-blue-600">AI</span></span>
       </div>
-      <div className="flex space-x-1">
-        {['Upload', 'Results', 'Insights', 'About'].map(tab => (
+      <div className="hidden md:flex space-x-1">
+        {['Upload', 'Results', 'About'].map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab)} 
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition ${activeTab === tab ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'}`}>
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === tab ? 'bg-blue-50 text-blue-700 shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}>
             {tab}
           </button>
         ))}
       </div>
     </div>
   </nav>
+);
+
+const Footer = () => (
+  <footer className="bg-white border-t border-slate-200 mt-auto">
+    <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col md:flex-row justify-between items-center text-sm text-slate-500">
+      <div className="flex items-center gap-2">
+        <Shield className="h-4 w-4 text-slate-400" />
+        <span>Graduation Project 2025</span>
+      </div>
+      <div className="mt-2 md:mt-0">
+        AI-Powered Medical Diagnostics • <span className="text-blue-600 font-medium">For Research Use Only</span>
+      </div>
+    </div>
+  </footer>
 );
 
 const UploadPage = ({ onAnalyze }) => {
@@ -127,38 +147,77 @@ const UploadPage = ({ onAnalyze }) => {
         const res = await runInference(file);
         if(res) onAnalyze(file, preview, res);
         setLoading(false);
-    }, 100);
+    }, 500);
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8 grid md:grid-cols-2 gap-8">
-      <div className="space-y-6">
-        <div><h1 className="text-2xl font-bold">Brain Tumor Classification</h1><p className="text-slate-500">Upload MRI scan for AI analysis.</p></div>
-        <div className="border-2 border-dashed border-slate-300 rounded-2xl h-64 flex flex-col items-center justify-center bg-slate-50 relative">
-          {!file ? (
-            <label className="cursor-pointer w-full h-full flex flex-col items-center justify-center p-6">
-               <Upload className="h-10 w-10 text-slate-400 mb-3" />
-               <span className="font-medium text-slate-700">Click to Upload MRI</span>
-               <input type="file" className="hidden" onChange={(e) => process(e.target.files[0])} />
-            </label>
-          ) : (
-            <div className="w-full h-full p-2 relative">
-                <img src={preview} className="w-full h-full object-contain rounded-xl"/>
-                <button onClick={()=>{setFile(null);setPreview(null)}} className="absolute top-4 right-4 bg-white p-1 rounded-full shadow hover:text-red-500"><X/></button>
-            </div>
-          )}
-        </div>
-        <button disabled={!file || loading} onClick={handleAnalyze} className={`w-full py-3 rounded-xl font-bold text-white flex justify-center items-center gap-2 ${!file || loading ? 'bg-slate-300' : 'bg-blue-600 hover:bg-blue-700'}`}>
-           {loading ? <Loader2 className="animate-spin"/> : <Activity/>} {loading ? 'Processing...' : 'Analyze Image'}
-        </button>
+    <div className="max-w-5xl mx-auto px-4 py-10 animate-fade-in">
+      <div className="text-center mb-10 space-y-2">
+        <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">AI-Powered Brain Tumor Detection</h1>
+        <p className="text-lg text-slate-500 max-w-2xl mx-auto">
+            A rapid, privacy-focused diagnostic tool assisting medical professionals in the early classification of brain tumors using Deep Learning.
+        </p>
       </div>
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 h-fit">
-        <h3 className="font-bold flex gap-2 items-center mb-4"><Info className="text-blue-600"/> Instructions</h3>
-        <ul className="text-sm text-slate-600 space-y-3">
-            <li>1. Ensure <code>model.onnx</code> is in the <code>public</code> folder.</li>
-            <li>2. Upload a standard MRI (JPG/PNG/DICOM).</li>
-            <li>3. AI runs locally in your browser.</li>
-        </ul>
+
+      <div className="grid md:grid-cols-12 gap-8">
+        {/* Upload Card */}
+        <div className="md:col-span-7 space-y-6">
+          <div className={`border-2 border-dashed rounded-3xl h-80 flex flex-col items-center justify-center transition-all duration-300 relative overflow-hidden group
+            ${file ? 'border-blue-500 bg-blue-50/30' : 'border-slate-300 hover:border-blue-400 hover:bg-slate-50'}`}>
+            
+            {!file ? (
+              <label className="cursor-pointer w-full h-full flex flex-col items-center justify-center p-6 z-10">
+                 <div className="bg-white p-4 rounded-full shadow-sm mb-4 group-hover:scale-110 transition-transform">
+                    <Upload className="h-8 w-8 text-blue-600" />
+                 </div>
+                 <span className="font-semibold text-lg text-slate-700">Drag & Drop MRI Scan</span>
+                 <span className="text-sm text-slate-400 mt-2">Supports JPG, PNG, DICOM</span>
+                 <input type="file" className="hidden" onChange={(e) => process(e.target.files[0])} />
+              </label>
+            ) : (
+              <div className="w-full h-full p-4 relative flex items-center justify-center">
+                  <img src={preview} className="max-h-full max-w-full object-contain rounded-xl shadow-sm"/>
+                  <button onClick={()=>{setFile(null);setPreview(null)}} className="absolute top-4 right-4 bg-white/90 p-2 rounded-full shadow-md hover:bg-red-50 text-slate-600 hover:text-red-500 transition-colors">
+                    <X className="h-5 w-5"/>
+                  </button>
+              </div>
+            )}
+          </div>
+
+          <button disabled={!file || loading} onClick={handleAnalyze} 
+            className={`w-full py-4 rounded-xl font-bold text-white text-lg shadow-lg hover:shadow-xl transition-all flex justify-center items-center gap-3
+            ${!file || loading ? 'bg-slate-300 cursor-not-allowed' : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:scale-[1.01]'}`}>
+             {loading ? <Loader2 className="animate-spin h-6 w-6"/> : <Activity className="h-6 w-6"/>} 
+             {loading ? 'Analyzing Scan...' : 'Run Analysis'}
+          </button>
+        </div>
+
+        {/* Instructions Card */}
+        <div className="md:col-span-5">
+          <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 h-full">
+            <h3 className="font-bold text-lg flex gap-2 items-center mb-6 text-slate-800">
+                <Info className="text-blue-600 h-5 w-5"/> How to Use
+            </h3>
+            <div className="space-y-6">
+                {[
+                    {step: 1, title: "Prepare Image", desc: "Ensure you have a clear T1-weighted MRI scan in JPG or PNG format."},
+                    {step: 2, title: "Upload Scan", desc: "Drag the file into the upload box on the left."},
+                    {step: 3, title: "AI Analysis", desc: "Click 'Run Analysis'. The CNN model processes the image locally in your browser."},
+                    {step: 4, title: "View Report", desc: "Instant classification results will appear with confidence scores."}
+                ].map((item) => (
+                    <div key={item.step} className="flex gap-4">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm">
+                            {item.step}
+                        </div>
+                        <div>
+                            <div className="font-semibold text-slate-800 text-sm">{item.title}</div>
+                            <div className="text-xs text-slate-500 leading-relaxed mt-1">{item.desc}</div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -167,25 +226,69 @@ const UploadPage = ({ onAnalyze }) => {
 const ResultsPage = ({ data, reset }) => {
   if(!data) return null;
   const isHealthy = data.res.prediction === "No Tumor";
+  
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
-      <div className="flex justify-between mb-6"><h2 className="text-2xl font-bold">Results</h2><button onClick={reset} className="text-blue-600">← Back</button></div>
+    <div className="max-w-6xl mx-auto px-4 py-10 animate-fade-in">
+      <div className="flex justify-between items-center mb-8">
+        <h2 className="text-3xl font-bold text-slate-900">Analysis Report</h2>
+        <button onClick={reset} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
+            ← Analyze Another
+        </button>
+      </div>
+
       <div className="grid md:grid-cols-2 gap-8">
-        <div className="bg-white p-2 rounded-2xl shadow border"><img src={data.img} className="rounded-xl w-full"/></div>
+        {/* Left Column */}
         <div className="space-y-6">
-            <div className={`p-6 rounded-xl border ${isHealthy ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
-                <div className="flex items-center gap-2 mb-2 font-bold uppercase text-sm">{isHealthy?<CheckCircle/>:<AlertCircle/>} Prediction</div>
-                <div className="text-3xl font-bold">{data.res.prediction}</div>
-                <div className="text-sm mt-1 opacity-80">Confidence: {(data.res.confidence*100).toFixed(2)}%</div>
+            <div className="bg-black/5 p-2 rounded-2xl border border-slate-200 shadow-inner flex items-center justify-center h-96">
+                <img src={data.img} className="max-h-full rounded-xl object-contain"/>
             </div>
-            <div className="bg-white p-6 rounded-xl border shadow-sm space-y-3">
-                <h3 className="font-bold">Probabilities</h3>
-                {Object.entries(data.res.probabilities).sort(([,a],[,b])=>b-a).map(([k,v])=>(
-                    <div key={k}>
-                        <div className="flex justify-between text-xs font-medium mb-1"><span>{k}</span><span>{(v*100).toFixed(1)}%</span></div>
-                        <div className="w-full bg-slate-100 rounded-full h-2"><div className={`h-2 rounded-full ${k===data.res.prediction?'bg-blue-600':'bg-slate-300'}`} style={{width:`${v*100}%`}}/></div>
+            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2">Disclaimer</h3>
+                <p className="text-slate-700 text-sm leading-relaxed">
+                    This AI result is for educational and experimental purposes only. It should not be used as a primary diagnostic tool. Always consult a certified radiologist.
+                </p>
+            </div>
+        </div>
+
+        {/* Right Column */}
+        <div className="space-y-6">
+            <div className={`p-8 rounded-2xl border-l-8 shadow-sm flex items-start gap-4
+                ${isHealthy ? 'bg-emerald-50 border-emerald-500' : 'bg-red-50 border-red-500'}`}>
+                <div className={`p-3 rounded-full ${isHealthy ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}`}>
+                    {isHealthy ? <CheckCircle className="h-8 w-8"/> : <AlertCircle className="h-8 w-8"/>}
+                </div>
+                <div>
+                    <div className={`text-sm font-bold uppercase tracking-wide mb-1 ${isHealthy ? 'text-emerald-700' : 'text-red-700'}`}>
+                        Detected Class
                     </div>
-                ))}
+                    <div className="text-4xl font-extrabold text-slate-900 mb-2">{data.res.prediction}</div>
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/60 text-sm font-medium text-slate-700 border border-slate-200">
+                        <Activity className="h-3 w-3 text-blue-500"/>
+                        Confidence: {(data.res.confidence*100).toFixed(2)}%
+                    </div>
+                </div>
+            </div>
+
+            <div className="bg-white p-8 rounded-2xl border border-slate-100 shadow-lg">
+                <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2">
+                    <Activity className="text-blue-600"/> Detailed Probabilities
+                </h3>
+                <div className="space-y-5">
+                    {Object.entries(data.res.probabilities).sort(([,a],[,b])=>b-a).map(([k,v])=>(
+                        <div key={k}>
+                            <div className="flex justify-between text-sm font-medium mb-2 text-slate-700">
+                                <span>{k}</span>
+                                <span className="text-slate-500">{(v*100).toFixed(1)}%</span>
+                            </div>
+                            <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
+                                <div 
+                                    className={`h-full rounded-full transition-all duration-1000 ease-out ${k===data.res.prediction ? (isHealthy ? 'bg-emerald-500' : 'bg-blue-600') : 'bg-slate-300'}`} 
+                                    style={{width:`${v*100}%`}}
+                                />
+                            </div>
+                        </div>
+                    ))}
+                </div>
             </div>
         </div>
       </div>
@@ -193,32 +296,54 @@ const ResultsPage = ({ data, reset }) => {
   );
 };
 
-const InsightsPage = () => (
-  <div className="max-w-4xl mx-auto px-4 py-8">
-    <h2 className="text-2xl font-bold text-slate-900 mb-6 text-center">Model Metrics</h2>
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
-      {[["Accuracy","98.5%"], ["Precision","98.2%"], ["Recall","97.9%"], ["F1 Score","98.0%"]].map(([k,v]) => (
-        <div key={k} className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm text-center"><div className="text-3xl font-bold text-blue-600 mb-1">{v}</div><div className="text-xs font-semibold text-slate-400 uppercase">{k}</div></div>
-      ))}
-    </div>
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-      <div className="p-4 border-b border-slate-100 font-bold text-slate-800 flex items-center gap-2"><BarChart2 className="h-5 w-5 text-blue-600"/>Comparison</div>
-      <table className="w-full text-left text-sm text-slate-600">
-        <thead className="bg-slate-50 text-slate-900"><tr><th className="p-4">Model</th><th className="p-4">Accuracy</th><th className="p-4">Size</th><th className="p-4">Latency</th></tr></thead>
-        <tbody className="divide-y divide-slate-100">
-            <tr><td className="p-4 font-medium">Baseline (VGG16)</td><td className="p-4 text-emerald-600">94.2%</td><td className="p-4">528 MB</td><td className="p-4">120ms</td></tr>
-            <tr><td className="p-4 font-medium">Custom CNN (Ours)</td><td className="p-4 text-emerald-600">98.5%</td><td className="p-4">45 MB</td><td className="p-4">15ms</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-);
-
 const AboutPage = () => (
-  <div className="max-w-3xl mx-auto px-4 py-8">
-    <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 space-y-6">
-      <h2 className="text-2xl font-bold text-slate-900">About BTCS</h2>
-      <p className="text-slate-600">This system assists in the early detection of brain tumors using Convolutional Neural Networks (CNNs) running directly in the browser via ONNX Runtime.</p>
+  <div className="max-w-4xl mx-auto px-4 py-12 animate-fade-in">
+    <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-slate-900 to-slate-800 p-10 text-white">
+            <h2 className="text-3xl font-bold mb-4">About the System</h2>
+            <p className="text-slate-300 leading-relaxed text-lg max-w-2xl">
+                The Brain Tumor Classification System (BTCS) is a graduation project dedicated to leveraging Artificial Intelligence for healthcare advancement.
+            </p>
+        </div>
+        
+        <div className="p-10 space-y-10">
+            {/* Tumor Guide (NEW ENHANCEMENT) */}
+            <section>
+                <h3 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+                    <Brain className="text-blue-600"/> Tumor Classification Guide
+                </h3>
+                <div className="grid sm:grid-cols-2 gap-4">
+                    <div className="p-4 rounded-xl bg-orange-50 border border-orange-100">
+                        <div className="font-bold text-orange-800 mb-1">Glioma</div>
+                        <div className="text-sm text-slate-600">A tumor occurring in the brain and spinal cord, arising from glial cells.</div>
+                    </div>
+                    <div className="p-4 rounded-xl bg-purple-50 border border-purple-100">
+                        <div className="font-bold text-purple-800 mb-1">Meningioma</div>
+                        <div className="text-sm text-slate-600">A tumor that forms on the membranes (meninges) covering the brain.</div>
+                    </div>
+                    <div className="p-4 rounded-xl bg-blue-50 border border-blue-100">
+                        <div className="font-bold text-blue-800 mb-1">Pituitary</div>
+                        <div className="text-sm text-slate-600">An abnormal growth in the pituitary gland, affecting hormone balance.</div>
+                    </div>
+                    <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-100">
+                        <div className="font-bold text-emerald-800 mb-1">No Tumor</div>
+                        <div className="text-sm text-slate-600">Healthy brain tissue with no detectable abnormalities.</div>
+                    </div>
+                </div>
+            </section>
+            
+            <div className="border-t border-slate-100 pt-8">
+                <h3 className="text-xl font-bold text-slate-900 mb-4">Technology Stack</h3>
+                <div className="flex flex-wrap gap-2">
+                    {['React', 'TailwindCSS', 'ONNX Runtime', 'Python', 'CNN'].map(tag => (
+                        <span key={tag} className="px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-medium">
+                            {tag}
+                        </span>
+                    ))}
+                </div>
+            </div>
+        </div>
     </div>
   </div>
 );
@@ -226,15 +351,16 @@ const AboutPage = () => (
 export default function App() {
   const [tab, setTab] = useState('Upload');
   const [data, setData] = useState(null);
+  
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
+    <div className="min-h-screen bg-slate-50/50 font-sans text-slate-900 flex flex-col">
       <Navbar activeTab={tab} setActiveTab={setTab}/>
-      <main className="container mx-auto">
+      <main className="container mx-auto pb-10 flex-grow">
         {tab === 'Upload' && <UploadPage onAnalyze={(f,i,r)=>{setData({file:f,img:i,res:r}); setTab('Results')}} />}
         {tab === 'Results' && <ResultsPage data={data} reset={()=>{setData(null);setTab('Upload')}} />}
-        {tab === 'Insights' && <InsightsPage />}
         {tab === 'About' && <AboutPage />}
       </main>
+      <Footer />
     </div>
   );
 }
