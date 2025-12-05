@@ -12,7 +12,7 @@ const MODEL_PATH = "./model.onnx";
 
 const IMAGE_SIZE = 224; 
 
-const CLASSES = ["Glioma", "Meningioma", "Pituitary", "No Tumor"];
+const CLASSES = ["Glioma", "Meningioma", "No Tumor", "Pituitary"];
 
 // --- 1. IMAGE PREPROCESSING ---
 async function preprocessImage(imageFile) {
@@ -52,14 +52,16 @@ async function preprocessImage(imageFile) {
 // --- 2. INFERENCE ENGINE ---
 const runInference = async (imageFile) => {
   try {
-    ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/";
+    ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.23.2/dist/";
+    ort.env.wasm.numThreads = 1;
     const session = await ort.InferenceSession.create(MODEL_PATH, { 
       executionProviders: ['wasm'], 
       graphOptimizationLevel: 'all' 
     });
 
     const inputTensor = await preprocessImage(imageFile);
-    const feeds = { input: inputTensor }; 
+    const inputName = session.inputNames[0];
+    const feeds = { [inputName]: inputTensor }; 
     const results = await session.run(feeds);
     const outputKey = session.outputNames[0];
     const outputData = results[outputKey].data;
@@ -85,8 +87,8 @@ const runInference = async (imageFile) => {
       probabilities: {
         "Glioma": probabilities[0],
         "Meningioma": probabilities[1],
-        "Pituitary": probabilities[2],
-        "No Tumor": probabilities[3]
+        "No Tumor": probabilities[2],
+        "Pituitary": probabilities[3]
       }
     };
   } catch (e) {
@@ -124,7 +126,7 @@ const Footer = () => (
     <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col md:flex-row justify-between items-center text-sm text-slate-500">
       <div className="flex items-center gap-2">
         <Shield className="h-4 w-4 text-slate-400" />
-        <span>Graduation Project 2025</span>
+        <span>AI System Design Course Project</span>
       </div>
       <div className="mt-2 md:mt-0">
         AI-Powered Medical Diagnostics • <span className="text-blue-600 font-medium">For Research Use Only</span>
@@ -303,7 +305,7 @@ const AboutPage = () => (
         <div className="bg-gradient-to-r from-slate-900 to-slate-800 p-10 text-white">
             <h2 className="text-3xl font-bold mb-4">About the System</h2>
             <p className="text-slate-300 leading-relaxed text-lg max-w-2xl">
-                The Brain Tumor Classification System (BTCS) is a graduation project dedicated to leveraging Artificial Intelligence for healthcare advancement.
+                The Brain Tumor Classification System (BTCS) is an AI System Design Course Project dedicated to leveraging Artificial Intelligence for healthcare advancement.
             </p>
         </div>
         
