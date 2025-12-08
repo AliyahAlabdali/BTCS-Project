@@ -8,7 +8,7 @@ An intelligent web-based diagnostic tool that leverages deep learning to classif
 
 - **🎯 Real-time AI Classification**: Instant brain tumor classification with confidence scores
 - **🔒 Privacy-First**: All processing happens locally in your browser - no data is sent to servers
-- **⚡ Fast Processing**: CNN model optimized for quick inference (15ms latency)
+- **⚡ Fast Processing**: YOLOv8 model optimized for quick inference (15ms latency)
 - **📊 Detailed Analytics**: Probability distribution across all tumor types
 - **🎨 Modern UI**: Beautiful, responsive interface built with React and Tailwind CSS
 - **📱 Mobile Friendly**: Works seamlessly on desktop, tablet, and mobile devices
@@ -49,7 +49,7 @@ npm install
 ## 🏗️ Technology Stack
 
 - **Frontend**: React 19, JavaScript, TailwindCSS
-- **AI/ML**: ONNX Runtime Web, CNN Model
+- **AI/ML**: ONNX Runtime Web, YOLOv8 Model
 - **Build Tool**: Vite 7
 - **Icons**: Lucide React
 - **Styling**: PostCSS, Autoprefixer
@@ -65,7 +65,7 @@ btcs-app/
 │   ├── index.css            # Global styles
 │   └── assets/              # Images and assets
 ├── public/
-│   ├── model.onnx           # Pre-trained CNN model
+│   ├── model.onnx           # Pre-trained YOLOv8 model
 │   └── ort-wasm-*.wasm      # ONNX Runtime WASM files
 ├── index.html               # HTML template
 ├── vite.config.js           # Vite configuration
@@ -75,7 +75,7 @@ btcs-app/
 
 ## 🤖 Model Details
 
-- **Architecture**: Convolutional Neural Network (CNN)
+- **Architecture**: You Only Look Once version 8 (YOLOv8)
 - **Input**: 224x224 RGB images
 - **Output**: 4 class probabilities (Glioma, Meningioma, Pituitary, No Tumor)
 - **Accuracy**: ~79%
